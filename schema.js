@@ -1,35 +1,23 @@
 const mongoose = require("mongoose");
 
 const schema = new mongoose.Schema({
-    companyname: {
+    username: {
         type: String,
-        required: [true, "Företagsnamn krävs"]
+        required: true,
+        unique: true,
+        trim: true
     },
 
-    jobtitle: {
+    password: {
         type: String,
-        required: [true, "Jobbtitel krävs"]
+        required: true
     },
 
-    location: {
+    cat: {
         type: String,
-        required: [true, "Plats krävs"]
-    },
-
-    startdate: {
-        type: Date,
-        required: [true, "Startdatum krävs"]
-    },
-
-    enddate: {
-        type: Date
-    },
-
-    description: {
-        type: String,
-        required: [true, "Beskrivning krävs"]
+        required: false
     }
 
 }, { timestamps: true });
 
-module.exports = mongoose.model("WorkExperience", schema);
+module.exports = mongoose.model("User", schema);
