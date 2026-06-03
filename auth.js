@@ -7,14 +7,14 @@ const authMiddleware = (req, res, next) => {
         // hämta header
         const authHeader = req.headers.authorization;
 
-        // kontrollera om token finns
+        // kontrollera om header finns
         if (!authHeader) {
             return res.status(401).json({
                 message: "Giltig header saknas"
             });
         }
 
-        // Bearer TOKEN
+        // hitta token
         const token = authHeader.split(" ")[1];
 
         // verifiera token
