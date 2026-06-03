@@ -1,6 +1,9 @@
 const express = require('express');
 const mongoose = require("mongoose");
 const cors = require('cors');
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
 require("dotenv").config();
 
 const app = express();
@@ -24,6 +27,9 @@ mongoose.connect(process.env.MONGO_STRING).then(() => {
 // schema
 const User = require("./schema.js");
 
+// auth mid
+const authMiddleware = require("./auth.js");
+
 // registrera
 app.post("/api/register", async (req, res) => {
 
@@ -44,7 +50,6 @@ app.post("/api/register", async (req, res) => {
             return res.status(409).json({
                 message: "En användare finns redan med det namnet"
             });
-
         }
 
         // hasha lösenordet
@@ -53,7 +58,7 @@ app.post("/api/register", async (req, res) => {
         // slumpa fram en kattbild
         const newCat = await fetch("https://cataas.com/cat?json=true");
         const catData = await newCat.json();
-        const catUrl = `https://cataas.com${catData.url}`;
+        const catUrl = catData.url;
 
         // skapa ny användare
         const user = new User({ username: username, password: passwordHash, cat: catUrl });
@@ -80,33 +85,79 @@ app.post("/api/register", async (req, res) => {
 // logga in
 app.post("/api/login", async (req, res) => {
 
-  try {
-      const result = await WorkExperience.find();
+    try {
 
-      res.json(result);
+        const { username, password } = req.body;
 
-  } catch (error) {
+        // hitta användare med givet namn
+        const user = await User.findOne({ username });
 
-      res.status(500).json({
-          message: error.message
-      });
-  }
+        if (!user) {
+            return res.status(401).json({
+                message: "Uppgifterna stämmer ej"
+            });
+        }
+
+        // jämför lösenorden
+        const passwordMatch = await bcrypt.compare(password, user.password);
+
+        if (!passwordMatch) {
+            return res.status(401).json({
+                message: "Uppgifterna stämmer ej"
+            });
+        }
+
+        // skapa JWT-token
+        const token = jwt.sign(
+            {
+                id: user._id,
+                username: user.username
+            },
+            process.env.JWT_SECRET,
+            {
+                expiresIn: "1h"
+            }
+        );
+
+        // allt gick bra
+        res.json({
+            message: "Inloggning lyckades",
+            token
+        });
+
+    } catch (error) {
+
+        // allt gick inte bra
+        res.status(500).json({
+            message: error.message
+        });
+
+    }
 
 });
 
 // hämta data för inloggad sida
-app.get("/api/dashboard", async (req, res) => {
+app.get("/api/dashboard", authMiddleware, async (req, res) => {
 
-  try {
-      const result = await WorkExperience.find();
+    try {
 
-      res.json(result);
+        const user = await User.findById(req.user.id).select("-password");
 
-  } catch (error) {
+        if (!user) {
+            return res.status(404).json({
+                message: "Användare hittades inte"
+            });
+        }
 
-      res.status(500).json({
-          message: error.message
-      });
-  }
+        res.json({
+            username: user.username,
+            cat: user.cat
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: error.message
+        });
+    }
 
 });
